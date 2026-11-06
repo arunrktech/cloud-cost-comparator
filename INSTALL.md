@@ -38,4 +38,6 @@ node scripts\build_report.js assets\example\report.json work\costs.json assets\e
 
 This rebuilds the example report in the `work` folder.
 
+To run the tests: `python -m unittest discover tests`
+
 The scripts handle the arithmetic, diagrams and report. Reading the documents, asking sizing questions, mapping services and fetching prices is done by Claude. To run the scripts on your own project without Claude, write `workload.json`, `prices.json` and `report.json` yourself, following `references/workload_schema.md` and `references/report_outline.md`.

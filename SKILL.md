@@ -15,13 +15,14 @@ Turns project input (HLD, requirements document, discovery session notes, or a p
 
 ## Non negotiable rules
 
-- **Never invent a price.** Every unit price comes from an official vendor pricing API or an official vendor pricing page (aws.amazon.com, amazonaws.com, cloud.google.com, googleapis.com, azure.microsoft.com, azure.com, learn.microsoft.com). Record `source` (`api` or `page`), the URL and the retrieval date on every price line. If no official number can be read, mark the line `unpriced` and say so in the report. Never fill a price from memory, a third party site, or an estimate.
+- **Never invent a price.** Every unit price comes from an official vendor pricing API or an official vendor pricing page (aws.amazon.com, amazonaws.com, cloud.google.com, googleapis.com, azure.microsoft.com, azure.com, learn.microsoft.com). Record `source` (`api` or `page`), the URL and the retrieval date on every price line. `cost_model.py` accepts only https URLs whose hostname exactly matches its official host list (for example aws.amazon.com, pricing.us-east-1.amazonaws.com, cloud.google.com, prices.azure.com, azure.microsoft.com, learn.microsoft.com); Google Sheets, look alike domains and storage buckets are rejected. If no official number can be read, mark the line `unpriced` and say so in the report. Never fill a price from memory, a third party site, or an estimate.
 - **Never label a price with the wrong region.** If the only price available is for another region (Google pages default to Iowa), either switch the region or change `regions` in workload.json and say so.
 - **Never invent sizing.** Sizing comes from the input, the user's answers, or `references/sizing_defaults.md`, labelled `stated` or `default`.
 - **Pros and cons are evidence based.** Each point must point to evidence in the report (a cost table row, a variance driver, a mapping note, an unpriced item, or a cited vendor page). No generic marketing claims.
 - **Like for like.** Compare equivalent capability (vCPU and memory class, redundancy, region tier). If no equivalent exists, say so.
 - **List prices only.** USD, before tax, no negotiated discounts, no support plans, free tiers excluded except the egress allowances in `references/pricing_quirks.md`.
 - **Arithmetic is done by `scripts/cost_model.py`, never in prose.**
+- **No cheapest cloud on incomplete data.** If `costs.json` has `complete: false` (any component unpriced or missing on any cloud), do not call any cloud cheapest overall in the summary, narrative or pros and cons. Say which items are unpriced, quote the like for like comparison (`variance.<scenario>.like_for_like`) and recommend pricing the gaps first. The report and infographic show this warning automatically.
 
 ## Defaults (use unless the user says otherwise)
 

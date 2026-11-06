@@ -121,7 +121,18 @@ def drawio(cloud, wl, path):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("workload"); ap.add_argument("--out", required=True)
     a = ap.parse_args()
-    wl = json.load(open(a.workload)); os.makedirs(a.out, exist_ok=True)
+    try:
+        with open(a.workload, encoding="utf-8") as f:
+            wl = json.load(f)
+    except FileNotFoundError:
+        raise SystemExit(f"ERROR: workload file not found: {a.workload}")
+    except IsADirectoryError:
+        raise SystemExit(f"ERROR: workload path is a folder, expected a JSON file: {a.workload}")
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"ERROR: workload file is not valid JSON ({a.workload}, line {e.lineno}): {e.msg}")
+    if not isinstance(wl, dict) or not wl.get("components"):
+        raise SystemExit(f"ERROR: workload file {a.workload} has no 'components' list (see references/workload_schema.md)")
+    os.makedirs(a.out, exist_ok=True)
     missing = [(c["id"], k) for c in wl["components"] for k in CLOUD if k not in c.get("mapping", {})]
     if missing:
         raise SystemExit(f"Missing mapping for: {missing}")
