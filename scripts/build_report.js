@@ -9,10 +9,20 @@ const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCe
   AlignmentType, HeadingLevel, BorderStyle, Footer, PageNumber } = D;
 
 const [, , REPORT, COSTS, WORKLOAD, DIAG, OUT] = process.argv;
-if (!OUT) { console.error("usage: node build_report.js report.json costs.json workload.json diagrams_dir out.docx"); process.exit(1); }
-const R = JSON.parse(fs.readFileSync(REPORT, "utf8"));
-const C = JSON.parse(fs.readFileSync(COSTS, "utf8"));
-const W = JSON.parse(fs.readFileSync(WORKLOAD, "utf8"));
+const die = (msg) => { console.error("ERROR: " + msg); process.exit(1); };
+if (!OUT) die("usage: node build_report.js report.json costs.json workload.json diagrams_dir out.docx");
+function loadJson(file, what) {
+  if (!fs.existsSync(file)) die(`${what} file not found: ${file}`);
+  if (fs.statSync(file).isDirectory()) die(`${what} path is a folder, expected a JSON file: ${file}`);
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { die(`${what} file is not valid JSON (${file}): ${e.message}`); }
+}
+const R = loadJson(REPORT, "report");
+const C = loadJson(COSTS, "costs");
+const W = loadJson(WORKLOAD, "workload");
+if (!fs.existsSync(DIAG) || !fs.statSync(DIAG).isDirectory()) die(`diagrams folder not found: ${DIAG} (run diagrams.py first)`);
+if (!C.variance || !C.variance.ondemand || !("like_for_like" in C.variance.ondemand)) die(`costs file ${COSTS} is from an older cost_model.py; re-run cost_model.py`);
+const outDir = path.dirname(path.resolve(OUT));
+if (!fs.existsSync(outDir)) die(`output folder does not exist: ${outDir}`);
 const CL = ["aws", "gcp", "azure"];
 const NAME = { aws: "AWS", gcp: "Google Cloud", azure: "Azure" };
 const FONT = "Calibri";
@@ -68,13 +78,36 @@ body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300
 
 // 1 Executive summary
 body.push(H1("1. Executive Summary"), ...paras(R.executive_summary));
-const cheapOD = V.ondemand.cheapest, cheapCM = V.commit.cheapest;
-body.push(...Tbl("Monthly cost by cloud (USD list prices)", ["Cloud", "On demand / month", "On demand / year", "vs cheapest", "With commitments / month", "vs cheapest"],
-  CL.map((c) => [NAME[c], usd(V.ondemand.totals[c]), usd(V.ondemand.annual[c], 0), V.ondemand.vs_cheapest[c].usd === 0 ? "cheapest" : `${usd(V.ondemand.vs_cheapest[c].usd)} (${pct(V.ondemand.vs_cheapest[c].pct)})`,
-    usd(V.commit.totals[c]), V.commit.vs_cheapest[c].usd === 0 ? "cheapest" : `${usd(V.commit.vs_cheapest[c].usd)} (${pct(V.commit.vs_cheapest[c].pct)})`]),
-  [1300, 1600, 1600, 1700, 1560, 1600], { right: [1, 2, 4], shadeRow: (r) => (r[0] === NAME[cheapOD] ? "E8F3EA" : null) }));
+const cheapOD = V.ondemand.cheapest;
+const vsCell = (vc, c) => (vc == null ? "not ranked" : vc[c].usd === 0 ? "cheapest" : `${usd(vc[c].usd)} (${pct(vc[c].pct)})`);
+if (!C.complete) {
+  // Warning box: totals exclude unpriced items, so no cloud is called cheapest overall.
+  body.push(new Paragraph({ spacing: { before: 60, after: 160 }, shading: { fill: "FFF4E5", type: ShadingType.CLEAR, color: "auto" },
+    border: { left: { style: BorderStyle.SINGLE, size: 18, color: "B54708", space: 6 } },
+    children: [new TextRun({ text: "Incomplete comparison. ", bold: true, color: "B54708" }),
+      new TextRun({ text: (C.warnings || []).join(" ") + " Treat the totals below as partial; use the like for like table for ranking." })] }));
+}
+const incompleteMark = (c) => ((V.ondemand.incomplete_clouds || []).includes(c) ? " *" : "");
+body.push(...Tbl(C.complete ? "Monthly cost by cloud (USD list prices)" : "Monthly cost by cloud, priced items only (USD list prices; * = has unpriced items)",
+  ["Cloud", "On demand / month", "On demand / year", "vs cheapest", "With commitments / month", "vs cheapest"],
+  CL.map((c) => [NAME[c] + incompleteMark(c), usd(V.ondemand.totals[c]), usd(V.ondemand.annual[c], 0), vsCell(V.ondemand.vs_cheapest, c),
+    usd(V.commit.totals[c]), vsCell(V.commit.vs_cheapest, c)]),
+  [1300, 1600, 1600, 1700, 1560, 1600], { right: [1, 2, 4], shadeRow: (r) => (cheapOD && r[0] === NAME[cheapOD] ? "E8F3EA" : null) }));
+if (!C.complete) {
+  const L = V.ondemand.like_for_like, LC = V.commit.like_for_like;
+  const label = Object.fromEntries(W.components.map((c) => [c.id, c.label || c.id]));
+  if (L.cheapest) {
+    body.push(...Tbl(`Like for like comparison: ${L.components.length} of ${L.components.length + L.excluded_components.length} components priced on every cloud`,
+      ["Cloud", "On demand / month", "vs cheapest", "With commitments / month", "vs cheapest"],
+      CL.map((c) => [NAME[c], usd(L.totals[c]), vsCell(L.vs_cheapest, c), usd(LC.totals[c]), vsCell(LC.vs_cheapest, c)]),
+      [1700, 1950, 1950, 1950, 1810], { right: [1, 3], shadeRow: (r) => (r[0] === NAME[L.cheapest] ? "E8F3EA" : null) }));
+    body.push(P("Excluded from the like for like comparison: " + L.excluded_components.map((id) => label[id] || id).join(", ") + ". Price these on every cloud before choosing on cost.", { run: { size: 20 } }));
+  } else {
+    body.push(P("No component is priced on all three clouds, so the clouds cannot be ranked on cost yet.", { run: { bold: true } }));
+  }
+}
 if (C.top_variance_drivers && C.top_variance_drivers.length) {
-  body.push(P("Largest contributors to the difference between clouds (on demand): " + C.top_variance_drivers.map((d) => `${d.label} (${usd(d.spread_usd)} spread, ${d.share_of_component_spread_pct}% of all component level differences)`).join("; ") + "."));
+  body.push(P("Largest contributors to the difference between clouds (on demand" + (C.complete ? "" : ", comparable components only") + "): " + C.top_variance_drivers.map((d) => `${d.label} (${usd(d.spread_usd)} spread, ${d.share_of_component_spread_pct}% of all component level differences)`).join("; ") + "."));
 }
 body.push(P(`Prices are USD list prices retrieved ${C.retrieved || ""} from official vendor APIs and pricing pages (${C.source_mix.api} API lines, ${C.source_mix.page} page lines). Taxes, support plans, negotiated discounts and free tiers are excluded.`, { run: { italics: true, size: 20 } }));
 
@@ -143,9 +176,12 @@ CL.forEach((k, i) => {
 // 7 Variance
 body.push(H1("7. Cost Variance"));
 body.push(...Tbl("Cost by component (monthly, on demand)", ["Component", "AWS", "Google Cloud", "Azure", "Cheapest", "Spread"],
-  C.components.map((r) => [r.label, usd(r.ondemand.aws), usd(r.ondemand.gcp), usd(r.ondemand.azure), NAME[r.ondemand_cheapest], usd(r.ondemand_spread_usd)])
-    .concat([["Total", usd(V.ondemand.totals.aws), usd(V.ondemand.totals.gcp), usd(V.ondemand.totals.azure), NAME[cheapOD], usd(Math.max(...CL.map((c) => V.ondemand.totals[c])) - Math.min(...CL.map((c) => V.ondemand.totals[c])))]]),
-  [2160, 1440, 1440, 1440, 1440, 1440], { right: [1, 2, 3, 5], shadeRow: (r) => (r[0] === "Total" ? "E7ECF5" : null) }));
+  C.components.map((r) => {
+    const cellv = (c) => ((r.gaps_on || []).includes(c) ? (r.ondemand[c] ? usd(r.ondemand[c]) + " (partial)" : "unpriced") : usd(r.ondemand[c]));
+    return [r.label, cellv("aws"), cellv("gcp"), cellv("azure"), r.ondemand_cheapest ? NAME[r.ondemand_cheapest] : "not ranked", r.ondemand_spread_usd == null ? "n/a" : usd(r.ondemand_spread_usd)];
+  }).concat([[C.complete ? "Total" : "Total (priced items only)", usd(V.ondemand.totals.aws), usd(V.ondemand.totals.gcp), usd(V.ondemand.totals.azure),
+    cheapOD ? NAME[cheapOD] : "not ranked", cheapOD ? usd(Math.max(...CL.map((c) => V.ondemand.totals[c])) - Math.min(...CL.map((c) => V.ondemand.totals[c]))) : "n/a"]]),
+  [2160, 1440, 1440, 1440, 1440, 1440], { right: [1, 2, 3, 5], shadeRow: (r) => (String(r[0]).startsWith("Total") ? "E7ECF5" : null) }));
 body.push(...paras(R.variance_discussion));
 if (C.unpriced && C.unpriced.length) {
   body.push(...Tbl("Items that could not be priced (excluded from totals)", ["Cloud", "Component", "Item", "Reason"],
