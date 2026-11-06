@@ -1,0 +1,27 @@
+{
+ "_comment": "Shared by narrative_check.py and build_report.js. Patterns are case insensitive and must work in both Python and JavaScript regex.",
+ "overall_claims": [
+  "\\b(cheapest|lowest|least expensive|most affordable|most cost[ -]effective)\\s+(cloud|option|provider|platform|choice)\\b",
+  "\\b(cheapest|lowest|least expensive|most affordable)\\s+(overall|in total|of the three)\\b",
+  "\\boverall\\s+(cheapest|lowest|winner)\\b",
+  "\\b(lowest|cheapest|smallest)\\s+(monthly\\s+|annual\\s+|yearly\\s+)?(list\\s+)?(total|bill|price|cost)s?\\b(?!\\s+(per|for)\\b)",
+  "\\b(highest|most expensive|priciest)\\s+(overall|total|bill|cloud|option)\\b",
+  "\\d+(\\.\\d+)?\\s*%\\s+(above|below|cheaper than|more expensive than|more than|less than)\\s+(aws|google cloud|gcp|microsoft azure|azure)\\b",
+  "\\b(aws|google cloud|gcp|microsoft azure|azure)\\s+(is|was|has|offers|gives|comes out|remains)\\s+(the\\s+)?(cheapest|lowest|least expensive|most affordable)\\b(?!\\s+(?!overall\\b|total\\b|monthly\\b|annual\\b|yearly\\b|list\\b|bill\\b|price\\b|cost\\b|option\\b|cloud\\b|choice\\b|of\\b|in\\b|on\\b|with\\b|and\\b|at\\b|by\\b)[a-z])"
+ ],
+ "not_a_winner_claim": "\\b(second|third|above|below|than|highest|most expensive|priciest)\\b",
+ "named_winner": "\\b(aws|google cloud|gcp|microsoft azure|azure)\\s+(is|was|has|offers|gives|comes out|remains)\\s+(the\\s+)?(cheapest|lowest|least expensive|most affordable)\\b(?!\\s+(?!overall\\b|total\\b|monthly\\b|annual\\b|yearly\\b|list\\b|bill\\b|price\\b|cost\\b|option\\b|cloud\\b|choice\\b|of\\b|in\\b|on\\b|with\\b|and\\b|at\\b|by\\b)[a-z])",
+ "exempt": [
+  "like for like",
+  "not ranked",
+  "once all items are priced",
+  "once every item is priced"
+ ],
+ "cloud_aliases": {
+  "aws": "aws",
+  "google cloud": "gcp",
+  "gcp": "gcp",
+  "azure": "azure",
+  "microsoft azure": "azure"
+ }
+}

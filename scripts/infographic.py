@@ -10,7 +10,7 @@ Each point is a short plain-language phrase (max ~70 characters) and must carry 
 Costs come from costs.json so the headline numbers always match the report.
 Identity is never color alone: every column has the cloud name, every point a check or cross symbol.
 """
-import argparse, json, sys, textwrap
+import argparse, json, os, sys, textwrap
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -41,6 +41,11 @@ def main():
     R = load_json(a.report, "report"); C = load_json(a.costs, "costs"); pc = R.get("pros_cons", {})
     if "like_for_like" not in C.get("variance", {}).get("ondemand", {}):
         sys.exit(f"ERROR: costs file {a.costs} is from an older cost_model.py; re-run cost_model.py")
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from narrative_check import check as narrative_check
+    problems = narrative_check(R, C)
+    if problems:
+        print("NARRATIVE CHECK FAILED (fix report.json):\n  " + "\n  ".join(problems)); sys.exit(1)
     errs = [f"{c} {k}: '{p.get('text')}' has no evidence" for c in CL for k in ("pros", "cons") for p in pc.get(c, {}).get(k, []) if not p.get("evidence")]
     errs += [f"{c}: needs at least 2 pros and 2 cons" for c in CL if len(pc.get(c, {}).get("pros", [])) < 2 or len(pc.get(c, {}).get("cons", [])) < 2]
     if errs:

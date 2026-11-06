@@ -69,7 +69,12 @@ It validates every line (source, URL on an official domain, numbers), totals eac
 ### 7. Write the narrative and the pros and cons
 Write `report.json` per `references/report_outline.md`, including `pros_cons`: for each cloud 2 to 4 positives, 2 to 4 negatives and a `best_for` line. Write points for a non technical reader (short, no jargon, max about 70 characters), each with `evidence` that names the report table by its caption (for example "Cost by component table, internet egress" or "Azure line items note"), never by table number, because numbering is assigned at build time. Good sources of points: cost rank and variance, the biggest variance driver, commitment savings, services with no close equivalent, unpriced items, region or compliance fit, operational effort implied by the mapping (managed versus self run).
 
-### 8. Build the infographic and the report
+### 8. Check the narrative, then build the infographic and the report
+The report opens with a verdict sentence generated from `costs.json` (cheapest cloud and gaps when complete; "no cloud is ranked" plus the like for like result when incomplete), so the headline always matches the numbers. Run the claim check first; `infographic.py` and `build_report.js` run the same check and refuse to build if it fails:
+```
+python scripts/narrative_check.py work/<slug>/report.json work/<slug>/costs.json
+```
+It blocks overall ranking claims ("cheapest overall", "lowest monthly total", "9% above Azure", "Azure is cheapest") when the comparison is incomplete, and winner claims that name the wrong cloud when it is complete. Per component claims ("cheapest storage per GB") are fine, and sentences that say "like for like" are allowed. If it fails, rewrite the flagged sentences; never edit the rules to get past it.
 ```
 python scripts/infographic.py work/<slug>/report.json work/<slug>/costs.json --out work/<slug>/diagrams/infographic.png
 node scripts/build_report.js work/<slug>/report.json work/<slug>/costs.json work/<slug>/workload.json work/<slug>/diagrams work/<slug>/<Project>_Cloud_Cost_Comparison.docx

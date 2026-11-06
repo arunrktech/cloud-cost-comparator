@@ -25,6 +25,39 @@ const outDir = path.dirname(path.resolve(OUT));
 if (!fs.existsSync(outDir)) die(`output folder does not exist: ${outDir}`);
 const CL = ["aws", "gcp", "azure"];
 const NAME = { aws: "AWS", gcp: "Google Cloud", azure: "Azure" };
+
+// Narrative check: same rules as narrative_check.py (shared narrative_rules.json).
+function narrativeProblems(report, costs) {
+  const rules = JSON.parse(fs.readFileSync(path.join(__dirname, "narrative_rules.json"), "utf8"));
+  const overall = rules.overall_claims.map((p) => new RegExp(p, "i"));
+  const notWinner = new RegExp(rules.not_a_winner_claim, "i"), named = new RegExp(rules.named_winner, "i");
+  const exempt = rules.exempt.map((e) => e.toLowerCase());
+  const complete = costs.complete !== false, cheapest = (costs.variance.ondemand || {}).cheapest;
+  const out = [];
+  const visit = (node, p, subject) => {
+    if (typeof node === "string") {
+      for (const s of node.split(/(?<=[.!?;])\s+/).map((x) => x.trim()).filter(Boolean)) {
+        if (exempt.some((e) => s.toLowerCase().includes(e))) continue;
+        const m = overall.map((re) => s.match(re)).find(Boolean); if (!m) continue;
+        if (!complete) { out.push(`${p}: overall cost claim '${m[0]}' but the comparison is incomplete (unpriced items). Rewrite without ranking the clouds, or say 'like for like'. Sentence: "${s}"`); continue; }
+        if (notWinner.test(s)) continue;
+        const n = s.match(named); const claimed = n ? rules.cloud_aliases[n[1].toLowerCase()] : subject;
+        if (claimed && cheapest && claimed !== cheapest) out.push(`${p}: claims ${NAME[claimed]} is cheapest ('${m[0]}') but costs.json says ${NAME[cheapest]}. Sentence: "${s}"`);
+      }
+    } else if (Array.isArray(node)) node.forEach((v, i) => visit(v, `${p}[${i}]`, subject));
+    else if (node && typeof node === "object") {
+      for (const [k, v] of Object.entries(node)) {
+        if (p === "report" && ["title", "subtitle", "author", "date"].includes(k)) continue;
+        if (p === "report" && k === "pros_cons" && v && typeof v === "object") { for (const [c, d] of Object.entries(v)) visit(d, `report.pros_cons.${c}`, c); continue; }
+        visit(v, `${p}.${k}`, subject);
+      }
+    }
+  };
+  visit(report, "report", null);
+  return out;
+}
+const problems = narrativeProblems(R, C);
+if (problems.length) die("narrative check failed; fix report.json before building:\n  " + problems.join("\n  "));
 const FONT = "Calibri";
 const usd = (v, d = 2) => (v == null ? "n/a" : "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }));
 const unitp = (v) => (v == null ? "n/a" : "$" + (v < 0.01 ? Number(v).toPrecision(3) : Number(v).toLocaleString("en-US", { maximumFractionDigits: 4 })));
@@ -76,17 +109,29 @@ body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 20
 if (R.subtitle) body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: R.subtitle, size: 24 })] }));
 body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 300 }, children: [new TextRun({ text: [R.author, R.date].filter(Boolean).join(" | "), size: 20, color: "555555" })] }));
 
-// 1 Executive summary
-body.push(H1("1. Executive Summary"), ...paras(R.executive_summary));
+// 1 Executive summary: the verdict sentence is generated from costs.json so it can never contradict the numbers.
 const cheapOD = V.ondemand.cheapest;
 const vsCell = (vc, c) => (vc == null ? "not ranked" : vc[c].usd === 0 ? "cheapest" : `${usd(vc[c].usd)} (${pct(vc[c].pct)})`);
-if (!C.complete) {
-  // Warning box: totals exclude unpriced items, so no cloud is called cheapest overall.
-  body.push(new Paragraph({ spacing: { before: 60, after: 160 }, shading: { fill: "FFF4E5", type: ShadingType.CLEAR, color: "auto" },
-    border: { left: { style: BorderStyle.SINGLE, size: 18, color: "B54708", space: 6 } },
-    children: [new TextRun({ text: "Incomplete comparison. ", bold: true, color: "B54708" }),
-      new TextRun({ text: (C.warnings || []).join(" ") + " Treat the totals below as partial; use the like for like table for ranking." })] }));
+function verdict() {
+  if (C.complete) {
+    const c = cheapOD, cc = V.commit.cheapest;
+    const others = CL.filter((x) => x !== c).map((x) => `${NAME[x]} ${usd(V.ondemand.totals[x])} (+${V.ondemand.vs_cheapest[x].pct}%)`).join(", ");
+    return { ok: true, text: `On demand, ${NAME[c]} is lowest at ${usd(V.ondemand.totals[c])} a month, against ${others}. With 1 year commitments, ${NAME[cc]} is lowest at ${usd(V.commit.totals[cc])} a month.` };
+  }
+  const L = V.ondemand.like_for_like;
+  const gaps = C.components.filter((r) => !r.comparable).map((r) => `${r.label} on ${r.gaps_on.map((c) => NAME[c]).join(" and ")}`);
+  let t = `No cloud is ranked overall because these items could not be priced: ${gaps.join("; ")}.`;
+  t += L.cheapest
+    ? ` On the ${L.components.length} of ${C.components.length} components priced on every cloud (like for like), ${NAME[L.cheapest]} is lowest at ${usd(L.totals[L.cheapest])} a month on demand. Treat the totals below as partial.`
+    : " No component is priced on every cloud, so the clouds cannot be compared on cost yet.";
+  return { ok: false, text: t };
 }
+const vd = verdict();
+body.push(H1("1. Executive Summary"));
+body.push(new Paragraph({ spacing: { before: 60, after: 180 }, shading: { fill: vd.ok ? "EAF5EC" : "FFF4E5", type: ShadingType.CLEAR, color: "auto" },
+  border: { left: { style: BorderStyle.SINGLE, size: 18, color: vd.ok ? "1F7A3D" : "B54708", space: 6 } },
+  children: [new TextRun({ text: vd.ok ? "Verdict. " : "Incomplete comparison. ", bold: true, color: vd.ok ? "1F7A3D" : "B54708" }), new TextRun({ text: vd.text })] }));
+body.push(...paras(R.executive_summary));
 const incompleteMark = (c) => ((V.ondemand.incomplete_clouds || []).includes(c) ? " *" : "");
 body.push(...Tbl(C.complete ? "Monthly cost by cloud (USD list prices)" : "Monthly cost by cloud, priced items only (USD list prices; * = has unpriced items)",
   ["Cloud", "On demand / month", "On demand / year", "vs cheapest", "With commitments / month", "vs cheapest"],

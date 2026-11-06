@@ -34,7 +34,7 @@
 
 Report sections built in this order
 1. Title block
-2. Executive summary (narrative) plus a totals table (on demand and commitment per cloud, cheapest marked, variance vs cheapest), then the infographic and a pros and cons table with evidence
+2. Executive summary: a generated verdict sentence from costs.json (not written by Claude), then the narrative, plus a totals table (on demand and commitment per cloud, cheapest marked, variance vs cheapest), then the infographic and a pros and cons table with evidence
 3. Scope and inputs (narrative) plus requirements table
 4. Assumptions table (every sizing value with stated or default basis, high impact flagged)
 5. Service mapping table (component by cloud with SKU and reason)
