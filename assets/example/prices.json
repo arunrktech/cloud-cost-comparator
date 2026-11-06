@@ -1,0 +1,16 @@
+{"currency": "USD", "retrieved": "2026-11-05", "clouds": {
+ "aws": [
+  {"component": "web", "item": "EC2 m7i.large Linux, shared, on demand", "unit": "hour", "unit_price": 0.1008, "quantity": 1460, "commit_unit_price": 0.06668, "commit_label": "1 year Reserved standard, no upfront", "source": "api", "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv", "retrieved": "2026-11-05", "note": "2 instances x 730 hours"},
+  {"component": "files", "item": "S3 Standard storage, first 50 TB tier", "unit": "GB-month", "unit_price": 0.023, "quantity": 500, "source": "api", "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.csv", "retrieved": "2026-11-05", "note": "500 GB"},
+  {"component": "egress", "item": "Data transfer out to internet, first 10 TB tier", "unit": "GB", "unit_price": 0.09, "quantity": 100, "source": "api", "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.csv", "retrieved": "2026-11-05", "note": "200 GB minus 100 GB monthly free allowance across AWS"}
+ ],
+ "gcp": [
+  {"component": "web", "item": "n2-standard-2 on demand (Iowa)", "unit": "hour", "unit_price": 0.097118, "quantity": 1460, "commit_unit_price": 0.061182, "commit_label": "1 year resource based committed use", "source": "page", "url": "https://cloud.google.com/products/compute/pricing/general-purpose", "retrieved": "2026-11-05", "note": "2 instances x 730 hours; page showed Iowa (us-central1)"},
+  {"component": "files", "item": "Cloud Storage Standard, regional (Iowa)", "unit": "GiB-month", "unit_price": 0.02, "quantity": 465.66, "source": "page", "url": "https://cloud.google.com/storage/pricing", "retrieved": "2026-11-05", "note": "$0.000027397 per GiB hour x 730 = $0.0200 per GiB month; 500 GB = 465.66 GiB"},
+  {"component": "egress", "item": "Internet egress, Premium tier, 0 to 10 TiB", "unit": "GiB", "unit_price": 0.12, "quantity": 186.26, "source": "page", "url": "https://cloud.google.com/storage/pricing", "retrieved": "2026-11-05", "note": "200 GB = 186.26 GiB; worldwide destinations excluding Asia and Australia"}
+ ],
+ "azure": [
+  {"component": "web", "item": "D2s v5 Linux pay as you go", "unit": "hour", "unit_price": 0.096, "quantity": 1460, "commit_unit_price": 0.059247, "commit_label": "1 year reservation ($519 per term / 8,760 h)", "source": "api", "url": "https://prices.azure.com/api/retail/prices", "retrieved": "2026-11-05", "note": "2 instances x 730 hours"},
+  {"component": "files", "item": "Block Blob Hot LRS data stored, first 50 TB", "unit": "GB-month", "unit_price": 0.0208, "quantity": 500, "source": "api", "url": "https://prices.azure.com/api/retail/prices", "retrieved": "2026-11-05", "note": "500 GB"},
+  {"component": "egress", "item": "Standard data transfer out, Microsoft network routing", "unit": "GB", "unit_price": 0.087, "quantity": 100, "source": "api", "url": "https://prices.azure.com/api/retail/prices", "retrieved": "2026-11-05", "note": "200 GB; first 100 GB per month priced at $0 by the API, next tier $0.087"}
+ ]}}

@@ -1,0 +1,138 @@
+{
+ "title": "Web App Starter: AWS vs Google Cloud vs Azure",
+ "subtitle": "Architecture and cost comparison (skill test run)",
+ "author": "Cloud Cost Comparator",
+ "date": "November 5, 2026",
+ "infographic_title": "Web App Starter: which cloud fits?",
+ "executive_summary": [
+  "Azure has the lowest monthly list price for this small design, both on demand and with 1 year commitments. The three clouds sit within 9% of each other on demand, so the choice should rest on team skills and services rather than price alone.",
+  "Internet egress drives most of the difference: Google Cloud charges more per GB and has no monthly free allowance in this estimate, while AWS and Azure each make the first 100 GB free."
+ ],
+ "scope": [
+  "The brief describes two web servers, 500 GB of stored files and about 200 GB of data downloaded by users each month. Databases, load balancing, backups and monitoring are out of scope for this test."
+ ],
+ "requirements": [
+  [
+   "R1",
+   "Run two general purpose web servers continuously",
+   "Test brief"
+  ],
+  [
+   "R2",
+   "Store 500 GB of frequently read files",
+   "Test brief"
+  ],
+  [
+   "R3",
+   "Serve about 200 GB per month to users over the internet",
+   "Test brief"
+  ]
+ ],
+ "architecture": {
+  "aws": [
+   "Two EC2 m7i.large instances serve the application and read and write files in an S3 Standard bucket. Responses leave AWS as internet data transfer."
+  ],
+  "gcp": [
+   "Two Compute Engine n2-standard-2 instances serve the application with files in a regional Cloud Storage Standard bucket. Traffic leaves on the Premium network tier."
+  ],
+  "azure": [
+   "Two D2s v5 virtual machines serve the application with files in Blob Storage (Hot, locally redundant). Traffic leaves over the Microsoft network."
+  ]
+ },
+ "variance_discussion": [
+  "Egress accounts for about 60% of the component level differences. Web servers account for about 31%: Azure's D2s v5 is the cheapest VM on demand and with a 1 year reservation. Google Cloud has the cheapest storage, but at 500 GB that saves only about $1 to $2 a month."
+ ],
+ "pros_cons": {
+  "aws": {
+   "pros": [
+    {
+     "text": "Second cheapest overall, 5% above Azure",
+     "evidence": "Monthly cost by cloud table"
+    },
+    {
+     "text": "First 100 GB of downloads each month are free",
+     "evidence": "AWS data transfer price file; AWS line items note"
+    },
+    {
+     "text": "1 year reserved cuts server cost by about a third",
+     "evidence": "AWS line items: $147.17 on demand vs $97.35 committed"
+    }
+   ],
+   "cons": [
+    {
+     "text": "Most expensive web servers in this design",
+     "evidence": "Cost by component table, web servers"
+    },
+    {
+     "text": "Highest storage price per GB of the three",
+     "evidence": "Cost by component table, file storage ($0.023 per GB)"
+    }
+   ],
+   "best_for": "Your team already knows AWS and expects modest download traffic"
+  },
+  "gcp": {
+   "pros": [
+    {
+     "text": "Cheapest file storage per GB",
+     "evidence": "Cost by component table, file storage"
+    },
+    {
+     "text": "Committed use pricing close to Azure's for servers",
+     "evidence": "Google Cloud and Azure line items: $89.33 vs $86.50 committed"
+    }
+   ],
+   "cons": [
+    {
+     "text": "Highest total cost, about 9% above Azure",
+     "evidence": "Monthly cost by cloud table"
+    },
+    {
+     "text": "Downloads cost more than double the others",
+     "evidence": "Cost by component table, internet egress ($22.35 vs about $9)"
+    },
+    {
+     "text": "Priced in Iowa, not US East, in this test",
+     "evidence": "Assumptions table, Google Cloud region"
+    }
+   ],
+   "best_for": "Storage grows large while user downloads stay small"
+  },
+  "azure": {
+   "pros": [
+    {
+     "text": "Lowest monthly total, on demand and committed",
+     "evidence": "Monthly cost by cloud table"
+    },
+    {
+     "text": "Cheapest web servers, biggest saving with reservation",
+     "evidence": "Azure line items; cost by component table, web servers"
+    },
+    {
+     "text": "First 100 GB of downloads each month are free",
+     "evidence": "Azure Retail Prices API; Azure line items note"
+    }
+   ],
+   "cons": [
+    {
+     "text": "Storage costs slightly more than Google Cloud",
+     "evidence": "Cost by component table, file storage"
+    },
+    {
+     "text": "Reservation price is for a full year upfront term",
+     "evidence": "Azure line items commitment note ($519 per year per VM)"
+    }
+   ],
+   "best_for": "You want the lowest bill for always on servers"
+  }
+ },
+ "risks": [
+  "Prices are list prices for a single month and exclude taxes, support plans and negotiated discounts.",
+  "Google Cloud was priced in Iowa because the rendered page defaulted to that region; US East prices may differ.",
+  "Disks attached to the VMs, load balancing and backups are not included and would add cost on every cloud."
+ ],
+ "next_steps": [
+  "Confirm the monthly download volume, since it drives most of the gap.",
+  "Price Google Cloud in us-east1 with the Billing Catalog API key.",
+  "Add block storage, load balancing and backups before using the totals for budgeting."
+ ]
+}

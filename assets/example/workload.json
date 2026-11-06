@@ -1,0 +1,30 @@
+{
+ "project": "Web App Starter (skill test)",
+ "inputs": ["Test brief: two web servers, 500 GB of files, about 200 GB downloaded by users each month"],
+ "regions": {"aws": "us-east-1", "gcp": "us-central1", "azure": "eastus"},
+ "hours_per_month": 730,
+ "components": [
+  {"id": "web", "label": "Web servers", "category": "compute_vm", "tier": "web",
+   "sizing": {"count": 2, "vcpu": 2, "memory_gb": 8, "hours": 730, "os": "linux"},
+   "sizing_basis": {"count": "stated", "vcpu": "default", "memory_gb": "default", "hours": "default", "os": "default"},
+   "source": "Test brief: 'two web servers'",
+   "mapping": {"aws": {"service": "Amazon EC2", "sku": "m7i.large", "reason": "2 vCPU, 8 GiB general purpose"},
+               "gcp": {"service": "Compute Engine", "sku": "n2-standard-2", "reason": "2 vCPU, 8 GB general purpose"},
+               "azure": {"service": "Virtual Machines", "sku": "D2s v5", "reason": "2 vCPU, 8 GiB general purpose"}}},
+  {"id": "files", "label": "File storage", "category": "object_storage", "tier": "data",
+   "sizing": {"storage_gb": 500, "class": "standard / hot"}, "sizing_basis": {"storage_gb": "stated", "class": "default"},
+   "source": "Test brief: '500 GB of files'",
+   "mapping": {"aws": {"service": "Amazon S3", "sku": "S3 Standard", "reason": "Frequently accessed object storage"},
+               "gcp": {"service": "Cloud Storage", "sku": "Standard, regional", "reason": "Frequently accessed object storage"},
+               "azure": {"service": "Blob Storage", "sku": "Hot LRS", "reason": "Frequently accessed object storage, locally redundant"}}},
+  {"id": "egress", "label": "Internet egress", "category": "data_transfer_out", "tier": "edge",
+   "sizing": {"gb_per_month": 200}, "sizing_basis": {"gb_per_month": "stated"},
+   "source": "Test brief: 'about 200 GB downloaded by users each month'",
+   "mapping": {"aws": {"service": "Data transfer out", "sku": "Internet, first 10 TB tier", "reason": "Standard internet egress"},
+               "gcp": {"service": "Network internet egress", "sku": "Premium tier, 0 to 10 TiB", "reason": "Default network tier"},
+               "azure": {"service": "Bandwidth", "sku": "Microsoft network routing", "reason": "Default routing preference"}}}
+ ],
+ "flows": [{"from": "users", "to": "egress", "label": "HTTPS"}, {"from": "egress", "to": "web"}, {"from": "web", "to": "files", "label": "read/write"}],
+ "assumptions": [{"item": "Google Cloud region", "value": "us-central1 (Iowa) because the rendered page showed Iowa prices", "basis": "default", "impact": "medium"},
+                 {"item": "Commitment option", "value": "1 year, no upfront where offered", "basis": "default", "impact": "high"}]
+}
