@@ -9,3 +9,5 @@ Give it an HLD, a requirements document or discovery session notes, and it produ
 * the cost variance between the three clouds, per component and in total, on demand and with 1 year commitments
 * a one page infographic of each cloud's positives and negatives for the project
 * every assumption and every price source, so each number can be checked
+
+See [INSTALL.md](INSTALL.md) for installation and usage.
